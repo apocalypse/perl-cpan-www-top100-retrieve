@@ -1,0 +1,71 @@
+Revision history for Perl extension Test::Apocalypse
+
+* 0.10
+
+	Added smart AUTOMATED_TESTING logic so we are now behaving in the same way as Alias envisaged
+		This means certain tests are disabled when AUTOMATED is set :)
+	Minor POD/Build.PL/test output tweaks
+	Added META.json to FileChecks test
+	Bumped Test::Strict prereq to 0.14 because now it works with Moose!
+	Tweaked the module loading logic so we have less duplication now + less bugs, yay!
+	Fixed a warning in the OutdatedPrereqs test so we don't cause FAILs with the Test::NoWarnings module :(
+	Added Test::NoPlan to the testsuite
+	Added debugging of test info, thanks POE::Test::Loops!
+
+* 0.09
+
+	Added the PERL_APOCALYPSE env var to override test selection and test all plugins
+	Run the plugins in alphabetical order, which is prettier :)
+	Removed the crappy stopwords addition in Pod_Spelling test
+	Added Test::JSON::Meta to the testsuite
+
+* 0.08
+
+	Minor POD tweaks
+	Added Test::Pod::No404s to the testsuite
+	Fixed a warning in the PerlMetrics test so we don't cause FAILs with the Test::NoWarnings module :(
+
+* 0.07
+
+	Fixed a issue with META.yml quoting causing parse failures when using tools that depend on it
+	Upgraded Module::Build to 0.3601, had to change prereq from '0.2.2' to '0.002002' to satisfy M::B::Compat :(
+
+* 0.06
+
+	Fixed OutdatedPrereqs test so it doesn't blow up on zero prereqs - thanks Ryan52!
+	Added $@ to the module load failure output, for better debugging - thanks Ryan52!
+	Minor POD tweaks
+	Added more common terms to the Pod_Spelling test
+	Added Test::NoBreakpoints to the testsuite
+	Added Test::ConsistentVersion to the testsuite
+	Added Test::EOL to the testsuite
+	Added Test::AutoLoader to the testsuite
+	Modified is_apocalypse_here() to accept options, you can now enable/disable specific tests!
+	Test::Apocalypse now finally passes it's own testsuite under RELEASE_TESTING, ha! ( thanks to Debian guys for prodding me )
+	The Kwalitee test for EXPERIMENTAL/EXTRA metrics is not treated as a failure now
+	Oops, Module::Pluggable wasn't listed as a prereq!
+	Sorry - added a lot of Perl::Critic extensions so you will not get failed tests because you missed to test an extension!
+
+* 0.05
+
+	Added Test::Module::Used to the testsuite
+	Added Test::Synopsis to the testsuite
+	Enabled the Test::Pod::Coverage test, it was previously disabled by mistake!
+	Changed to the new ENV var scheme, proposed by Alias ( and thanks to JAWNSY for prodding me )
+
+* 0.04
+
+	Removed Test::CheckManifest and replaced with Test::DistManifest, thanks JAWNSY!
+	Various POD cleanups and additions
+
+* 0.03
+
+	Added more tests :)
+
+* 0.02
+
+	fix bad test
+
+* 0.01
+
+	initial release
