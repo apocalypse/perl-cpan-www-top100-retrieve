@@ -20,8 +20,17 @@ my $build = Module::Build->new(
 	'test_files'		=> 't/*.t',
 
 	'requires'		=> {
-		# LWP, of course...
+		# WWW stuff, of course...
 		'LWP::UserAgent'		=> 0,
+		'URI'				=> 0,
+		'HTML::TableExtract'		=> 0,
+
+		# Our Moose stuff
+		'Moose'				=> 0,
+		'Moose::Util::TypeConstraints'	=> 0,
+		'MooseX::StrictConstructor'	=> 0,
+		'Params::Coerce'		=> 0,
+		'namespace::autoclean'		=> 0,
 
 		# we need a recent perl
 		'perl'				=> '5.008',

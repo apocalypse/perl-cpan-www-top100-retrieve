@@ -1,412 +1,263 @@
 # Declare our package
-package Test::Apocalypse;
+package CPAN::WWW::Top100::Retrieve;
 use strict; use warnings;
 
 # Initialize our version
 use vars qw( $VERSION );
-$VERSION = '0.10';
+$VERSION = '0.01';
 
-# setup our tests and etc
-use Test::Block qw( $Plan );
-use Test::More;
-use Test::Builder;
-use Module::Pluggable require => 1, search_path => [ __PACKAGE__ ];
+# import the Moose stuff
+use Moose;
+use MooseX::StrictConstructor;
+use Moose::Util::TypeConstraints;
+use Params::Coerce;
+use namespace::autoclean;
 
-# auto-export the only sub we have
-use base qw( Exporter );
-our @EXPORT = qw( is_apocalypse_here ); ## no critic ( ProhibitAutomaticExportation )
+# get some utility stuff
+use LWP::UserAgent;
+use URI;
+use HTML::TableExtract;
 
-sub is_apocalypse_here {
-	# should we even run those tests?
-	unless ( $ENV{RELEASE_TESTING} or $ENV{AUTOMATED_TESTING} ) {
-		plan skip_all => 'Author test. Please set $ENV{RELEASE_TESTING} to a true value to run.';
+use CPAN::WWW::Top100::Retrieve::Dist;
+use CPAN::WWW::Top100::Retrieve::Utils qw( default_top100_uri dbids type2dbid dbid2type );
+
+has 'debug' => (
+	isa		=> 'Bool',
+	is		=> 'rw',
+	default		=> sub { 0 },
+);
+
+has 'ua' => (
+	isa		=> 'LWP::UserAgent',
+	is		=> 'rw',
+	required	=> 0,
+	lazy		=> 1,
+	default		=> sub {
+		LWP::UserAgent->new;
+	},
+);
+
+has 'error' => (
+	isa		=> 'Str',
+	is		=> 'ro',
+	writer		=> '_error',
+);
+
+# Taken from Moose::Cookbook::Basics::Recipe5
+subtype 'My::Types::URI' => as class_type('URI');
+
+coerce 'My::Types::URI'
+	=> from 'Object'
+		=> via {
+			$_->isa('URI') ? $_ : Params::Coerce::coerce( 'URI', $_ );
+		}
+	=> from 'Str'
+		=> via {
+			URI->new( $_, 'http' )
+		};
+
+has 'uri' => (
+	isa		=> 'My::Types::URI',
+	is		=> 'rw',
+	required	=> 0,
+	lazy		=> 1,
+	default		=> sub {
+		default_top100_uri();
+	},
+	coerce		=> 1,
+);
+
+has '_data' => (
+	isa		=> 'HashRef',
+	is		=> 'ro',
+	default		=> sub { {} },
+);
+
+sub _retrieve {
+	my $self = shift;
+
+	# Do we already have data?
+	if ( keys %{ $self->_data } > 0 ) {
+		warn "Using cached data" if $self->debug;
+		return 1;
 	} else {
-		plan 'no_plan';
-
-		# load our nifty "catch-all" tests
-		eval "use Test::NoWarnings";		## no critic ( ProhibitStringyEval )
+		warn "Starting retrieve run" if $self->debug;
 	}
 
-	# The options hash
-	my %opt;
-
-	# Support passing in a hash ref or a regular hash
-	if ( ( @_ & 1 ) and ref $_[0] and ref( $_[0] ) eq 'HASH' ) {
-		%opt = %{ $_[0] };
-	} else {
-		# Sanity checking
-		if ( @_ & 1 ) {
-			die 'The sub is_apocalypse_here() requires an even number of options';
-		}
-
-		%opt = @_;
+	# Okay, get the data via LWP
+	warn "LWP->get( " . $self->uri . " )" if $self->debug;
+	my $response = $self->ua->get( $self->uri );
+	if ( $response->is_error ) {
+		my $errstr = "LWP Error: " . $response->status_line . "\n" . $response->content;
+		$self->_error( $errstr );
+		warn $errstr if $self->debug;
+		return 0;
 	}
 
-	# lowercase keys
-	%opt = map { lc($_) => $opt{$_} } keys %opt;
+	# Parse it!
+	return $self->_parse( $response->content );
+}
 
-	# setup the "allow/deny" tests
-	if ( exists $opt{'allow'} and exists $opt{'deny'} ) {
-		die 'Unable to use "allow" and "deny" at the same time!';
-	}
-	foreach my $type ( qw( allow deny ) ) {
-		if ( ! exists $opt{ $type } or ! defined $opt{ $type } ) {
-			# Don't set anything
-			delete $opt{ $type } if exists $opt{ $type };
-		} else {
-			if ( ! ref $opt{ $type } ) {
-				# convert it to a qr// regex?
-				eval { $opt{ $type } = qr/$opt{ $type }/i };
-				if ( $@ ) {
-					die "Unable to compile the '$type' regex: $@";
-				}
-			} elsif ( ref( $opt{ $type } ) ne 'Regexp' ) {
-				die "The '$type' option is not a regexp!";
-			}
-		}
-	}
+sub _parse {
+	my $self = shift;
+	my $content = shift;
 
-	# Print some basic debugging info, thanks POE::Test::Loops::00_info!
-	diag(
-		"Testing Test::Apocalypse v$Test::Apocalypse::VERSION, ",
-		"Perl $], ",
-		"$^X on $^O",
-	);
+	# Get the tables!
+	foreach my $dbid ( sort { $a <=> $b } @{ dbids() } ) {
+		warn "Parsing dbid $dbid..." if $self->debug;
 
-	# loop through our plugins ( in alphabetical order! )
-	foreach my $t ( sort { $a cmp $b } __PACKAGE__->plugins() ) {	## no critic ( RequireExplicitInclusion )
-		# localize the stuff
-		local $Plan;
+		my $table_error;
+		my $table = HTML::TableExtract->new( attribs => { id => "ds$dbid" }, error_handle => \$table_error );
+		$table->parse( $content );
 
-		# Do we want this test?
-		# PERL_APOCALYPSE=1 means run all tests, =0 means default behavior
-		if ( ! exists $ENV{PERL_APOCALYPSE} or ! $ENV{PERL_APOCALYPSE} ) {
-			if ( exists $opt{'allow'} ) {
-				if ( $t =~ /^Test::Apocalypse::(.+)$/ ) {
-					if ( $1 !~ $opt{'allow'} ) {
-						diag( "Skipping $t ( via allow policy )..." );
-						next;
-					}
-				}
-			} elsif ( exists $opt{'deny'} ) {
-				if ( $t =~ /^Test::Apocalypse::(.+)$/ ) {
-					if ( $1 =~ $opt{'deny'} ) {
-						diag( "Skipping $t ( via deny policy )..." );
-						next;
-					}
-				}
-			}
+		if ( ! $table->tables ) {
+			my $errstr = "Unable to parse table $dbid";
+			$errstr .= " $table_error" if length $table_error;
+			$self->_error( $errstr );
+			warn $errstr if $self->debug;
+			return 0;
 		}
 
-		# Check for AUTOMATED_TESTING
-		if ( $ENV{AUTOMATED_TESTING} and ! $ENV{PERL_APOCALYPSE} and $t->can( '_do_automated' ) and ! $t->_do_automated() ) {
-			diag( "Skipping $t ( for RELEASE_TESTING only )..." );
-			next;
-		}
-
-		# Load the modules the plugin needs
-		if ( $t->can( '_load_prereqs' ) ) {
-			my %MODULES = $t->_load_prereqs;
-			my $load_fail = undef;
-
-			while (my ($module, $version) = each %MODULES) {
-				eval "package $t; use $module $version";	## no critic ( ProhibitStringyEval )
-				next unless $@;
-
-				if ( $ENV{RELEASE_TESTING} ) {
-					die 'Could not load release-testing module "' . $module . " v$version\" for $t -> $@";
+		foreach my $ts ( $table->tables ) {
+			# Store it in our data struct!
+			my %cols;
+			foreach my $row ( $ts->rows ) {
+				if ( ! keys %cols ) {
+					# First row, the headers!
+					my $c = 0;
+					%cols = map { $_ => $c++ } @$row;
 				} else {
-					# TODO include $@ here somehow? I want to pretty-print it...
-					$load_fail = "$module v$version";
-					last;
+					# Make the object!
+					my $obj = CPAN::WWW::Top100::Retrieve::Dist->new(
+						## no critic ( ProhibitAccessOfPrivateData )
+						'dbid'		=> $dbid,
+						'type'		=> dbid2type( $dbid ),
+						'rank'		=> $row->[ $cols{ 'Rank' } ],
+						'author'	=> $row->[ $cols{ 'Author' } ],
+						'dist'		=> $row->[ $cols{ 'Distribution' } ],
+
+						# ugly logic here, but needed to "collate" the different report types
+						'score'		=> ( exists $cols{ 'Dependencies' } ? $row->[ $cols{ 'Dependencies' } ] :
+									( exists $cols{ 'Dependents' } ? $row->[ $cols{ 'Dependents' } ] :
+										( exists $cols{ 'Score' } ? $row->[ $cols{ 'Score' } ] : undef ) ) ),
+					);
+
+					push( @{ $self->_data->{ $dbid } }, $obj );
 				}
 			}
-
-			if ( defined $load_fail ) {
-				diag( "Skipping $t ( unable to load required module: $load_fail )..." );
-				next;
-			}
-		} else {
-			diag( "Skipping $t ( unable to parse required modules - YELL AT THE AUTHOR! )..." );
-			next;
 		}
-
-		# do nasty override of Test::Builder::plan
-		my $newplan = sub {
-			my( $self, $cmd, $arg ) = @_;
-			return unless $cmd;
-
-			# handle the cmds
-			if ( $cmd eq 'skip_all' ) {
-				$Plan = { $t => 1 };
-				SKIP: {
-					$self->skip( "skipping $t - $arg", 1 );
-				}
-			} elsif ( $cmd eq 'tests' ) {
-				$Plan = { $t => $arg };
-			} elsif ( $cmd eq 'no_plan' ) {
-				# ignore it
-				$Plan = { $t => 0 };
-			} else {
-				die "Unknown cmd: $cmd";
-			}
-
-			return 1;
-		};
-
-		# Same thing for Test::Builder::create - Test::NoPlan uses it, argh!
-		my $newcreate = sub {
-			diag( "ARGH! $t uses Test::Builder::create() - go patch it!" ) if $ENV{RELEASE_TESTING};
-			goto &Test::Builder::new;
-		};
-
-		no warnings 'redefine'; no strict 'refs';	## no critic ( ProhibitNoStrict )
-		local *{'Test::Builder::plan'} = $newplan;
-		local *{'Test::Builder::create'} = $newcreate;
-
-		# run it!
-		use warnings; use strict;
-		diag( "Running $t..." );
-		$t->do_test();
 	}
 
-	# done with testing
 	return 1;
 }
+
+sub list {
+	my $self = shift;
+	my $type = shift;
+
+	return if ! defined $type or ! length $type;
+	$type = type2dbid( lc( $type ) );
+	return if ! defined $type;
+
+	# if we haven't retrieved yet, do it!
+	return if ! $self->_retrieve;
+
+	# Generate a copy of our data
+	my @r = ( @{ $self->_data->{ $type } } );
+	return \@r;
+}
+
+# from Moose::Manual::BestPractices
+no Moose;
+__PACKAGE__->meta->make_immutable;
 
 1;
 __END__
 
-=for stopwords APOCAL AUTHORs AnnoCPAN CPAN RT al backend debian distro distros dists env hackish plugins testsuite yml pm yay unicode blog precompiled CPANTS com diff github dist
+=for stopwords Top100 AnnoCPAN CPANTS Kwalitee RT com diff dists github ua uri
 
 =head1 NAME
 
-Test::Apocalypse - Apocalypse's favorite tests bundled into a simple interface
+CPAN::WWW::Top100::Retrieve - Retrieves the CPAN Top100 data from http://ali.as/top100
 
 =head1 SYNOPSIS
 
 	#!/usr/bin/perl
 	use strict; use warnings;
 
-	use Test::More;
-	eval "use Test::Apocalypse";
-	if ( $@ ) {
-		plan skip_all => 'Test::Apocalypse required for validating the distribution';
-	} else {
-		# lousy hack for kwalitee
-		require Test::NoWarnings; require Test::Pod; require Test::Pod::Coverage;
-		is_apocalypse_here();
-	}
+	use CPAN::WWW::Top100::Retrieve;
+	use Data::Dumper;
 
-=head1 ABSTRACT
-
-Using this test module simplifies/bundles common distribution tests favored by the CPAN id APOCAL.
+	my $top100 = CPAN::WWW::Top100::Retrieve->new;
+	print Dumper( $top100->list( 'heavy' ) );
 
 =head1 DESCRIPTION
 
-This module greatly simplifies common author tests for modules heading towards CPAN. I was sick of copy/pasting
-the tons of t/foo.t scripts + managing them in every distro. I thought it would be nice to bundle all of it into
-one module and toss it on CPAN :) That way, every time I update this module all of my dists would be magically
-updated!
+This module retrieves the data from CPAN Top100 and returns it in a structured format.
 
-This module respects the RELEASE_TESTING/AUTOMATED_TESTING env variable, if it is not set it will skip the entire
-testsuite. Normally end-users should not run it; but you can if you want to see how bad my dists are, ha! The scheme
-is exactly the same as the one Alias proposed in L<Test::XT> and in his blog post, L<http://use.perl.org/~Alias/journal/38822>.
+=head2 Constructor
 
-This module uses L<Module::Pluggable> to have custom "backends" that process various tests. We wrap them in a hackish
-L<Test::Block> block per-plugin and it seems to work nicely. If you want to write your own, it should be a breeze
-once you look at some of my plugins and see how it works. ( more documentation to come )
+This module uses Moose, so you can pass either a hash or hashref to the constructor. The attributes are:
 
-=head2 Usage
+=head3 debug
 
-In order to use this, you would need to be familiar with the "standard" steps in order to fully exercise the testsuite.
-There are a few steps we require, because our plugins need stuff to be prepared for them. For starters, you would need
-a test file in your distribution similar to the one in SYNOPSIS. Once that is done and added to your MANIFEST and etc,
-you can do this:
+( not required )
 
-	perl Build.PL			# sets up the dist ( duh, hah )
-	./Build dist			# makes the tarball ( so certain plugins can process it )
-	RELEASE_TESTING=1 ./Build test	# runs the testsuite!
+A boolean value specifying debug warnings or not.
 
-=head1 Methods
+=head3 ua
 
-=head2 is_apocalypse_here()
+( not required )
 
-This is the main entry point for this testsuite. By default, it runs every plugin in the testsuite. You can enable/disable
-specific plugins if you desire. It accepts a single argument: a hashref or a hash. It can contain various options, but as of
-now it only supports two options. If you try to use allow and deny at the same time, this module will throw an exception.
+The LWP::UserAgent object to use in place of the default one.
 
-=head3 allow
+The default is:
 
-Setting "allow" to a string or a precompiled regex will run only the plugins that match the regex. If passed a string, this module
-will compile it via C<qr/$str/i>.
+	LWP::UserAgent->new;
 
-	# run only the EOL test and disable all other tests
-	is_apocalypse_here( {
-		allow	=> qr/^EOL$/,
-	} );
+=head3 uri
 
-	# run all "dist" tests
-	is_apocalypse_here( {
-		allow	=> 'dist',
-	} );
+( not required )
 
-=head3 deny
+The uri of Top100 data we should use to retrieve data in place of the default one.
 
-Setting "deny" to a string or a precompiled regex will not run the plugins that match the regex. If passed a string, this module
-will compile it via C<qr/$str/i>.
+The default is:
 
-	# disable Pod_Coverage test and enable all other tests
-	is_apocalypse_here( {
-		deny	=> qr/^Pod_Coverage$/,
-	} );
+	CPAN::WWW::Top100::Retrieve::Utils::default_top100_uri()
 
-	# disable all pod tests
-	is_apocalypse_here( {
-		deny	=> 'pod',
-	} );
+=head2 Methods
 
-=head2 plugins()
+Currently, there is only one method: list(). You call this and get the arrayref of data back. For more
+information please look at the L<CPAN::WWW::Top100::Retrieve::Dist> class. You can call list() as
+many times as you want, no need to re-instantiate the object for each query.
 
-Since this module uses L<Module::Pluggable> you can use this method on the package to find out what plugins are available. Handy if you need
-to know what plugins to skip, for example.
+=head3 list
 
-WARNING: We enable the "require" option to L<Module::Pluggable> so that means the plugins returned are objects.
+Takes one argument: the $type of Top100 list and returns an arrayref of dists.
 
-	my @tests = Test::Apocalypse->plugins;
+WARNING: list() will return an empty list if errors happen. Please look at the error() method for the string.
 
-=head1 EXPORT
+Example:
 
-Automatically exports the "is_apocalypse_here" sub.
+	use Data::Dumper;
+	print Dumper( $top100->list( 'heavy' ) );
+	print Dumper( $top100->list( 'volatile' ) );
 
-=head1 MORE IDEAS
+=head3 error
 
-=over 4
-
-=item * Document the way we do plugins so others can add to this testsuite :)
-
-=item * POD standards check
-
-Do we have SYNOPSIS, ABSTRACT, SUPPORT, etc sections? ( PerlCritic can do that! Need to investigate more... )
-
-=item * Help with version updates automatically
-
-This little snippet helps a lot, I was wondering if I could integrate it into the testsuite hah!
-
-	find -name '*.pm' | grep -v /blib/ | xargs sed -i "s/\$VERSION = '[^']\+\?';/\$VERSION = '0.10';/"
-
-=item * Integrate Test::UniqueTestNames into the testsuite
-
-This would be nice, but I'm not sure if I can actually force this on other tests. Otherwise I'll be just making
-sure that the Test::Apocalypse tests is unique, which is worthless to $dist trying to clean itself up...
-
-=item * META.yml checks
-
-We should make sure that the META.yml includes the "repository", "license", and other useful keys!
-
-=item * Other AUTHORs
-
-As always, we should keep up on the "latest" in the perl world and look at other authors for what they are doing.
-
-=item * indirect syntax
-
-We should figure out how to use indirect.pm to detect this deprecated method of coding. There's a L<Perl::Critic> plugin for this, yay!
-
-=item * Test::PPPort
-
-Already implemented as PPPort.pm but it's less invasive than my version, ha!
-
-=item * Test::DependentModules
-
-This is a crazy test, but would help tremendously in finding regressions in your code!
-
-=item * Test::CleanNamespaces
-
-I don't exclusively code in Moose, but this could be useful...
-
-=item * Test::Vars
-
-This looks useful to detect unused vars ( copy/paste errors? heh )
-
-=item * Test::Script
-
-Useful for the compile test on bin/* and examples/* ?
-
-=back
-
-=head2 Modules that I considered but decided against using
-
-=over 4
-
-=item * Test::MyDeps
-
-Superseded by Test::DependentModules
-
-=item * Test::NoTabs
-
-I always use tabs! :(
-
-=item * Test::CheckManifest
-
-This was a buggy dist that I dropped and is now using Test::DistManifest
-
-=item * Test::Dist
-
-This is pretty much the same thing as this dist ;)
-
-=item * Test::PureASCII
-
-This rocks, as I don't care about unicode in my perl! ;)
-
-=item * Test::LatestPrereqs
-
-This looks cool but we need to fiddle with config files? My OutdatedPrereqs test already covers it pretty well...
-
-=item * Test::Pod::Content
-
-This is useful, but not everyone has the same POD layout. It would be too much work to try and generalize this...
-
-=item * Test::GreaterVersion
-
-Since I never use CPAN, this is non-functional for me. However, it might be useful for someone?
-
-=item * Test::Kwalitee
-
-This dist rocks, but it doesn't print the info nor utilize the extra metrics. My homebrew solution actually copied
-a lot of code from this, so I have to give it props!
-
-=item * Test::LoadAllModules
-
-This is very similar to Test::UseAllModules but looks more complicated. Also, I already have enough tests that do that ;)
-
-=item * Test::ModuleReady
-
-This looks like a nice module, but what it does is already covered by the numerous tests in this dist...
-
-=item * Test::PerlTidy
-
-Br0ken install at this time... ( PerlCritic can do that! Need to investigate more... ) Also, all it does is... run your module
-through perltidy and compare the outputs. Not that useful imo because I never could get perltidy to match my prefs :(
-
-=item * Test::Install::METArequires
-
-This looks like a lazy way to do auto_install and potentially dangerous! Better to just use the prereq logic in Build.PL/Makefile.PL
-
-=item * Test::Perl::Metrics::Simple
-
-This just tests your Cyclomatic complexity and was the starting point for my homebrew solution.
-
-=back
+Returns the error string if it was set, undef if not.
 
 =head1 SEE ALSO
 
-None.
+L<CPAN::WWW::Top100::Retrieve::Dist>
+
+L<CPAN::WWW::Top100::Retrieve::Utils>
 
 =head1 SUPPORT
 
 You can find documentation for this module with the perldoc command.
 
-    perldoc Test::Apocalypse
+	perldoc CPAN::WWW::Top100::Retrieve
 
 =head2 Websites
 
@@ -414,35 +265,35 @@ You can find documentation for this module with the perldoc command.
 
 =item * Search CPAN
 
-L<http://search.cpan.org/dist/Test-Apocalypse>
+L<http://search.cpan.org/dist/CPAN-WWW-Top100-Retrieve>
 
 =item * AnnoCPAN: Annotated CPAN documentation
 
-L<http://annocpan.org/dist/Test-Apocalypse>
+L<http://annocpan.org/dist/CPAN-WWW-Top100-Retrieve>
 
 =item * CPAN Ratings
 
-L<http://cpanratings.perl.org/d/Test-Apocalypse>
+L<http://cpanratings.perl.org/d/CPAN-WWW-Top100-Retrieve>
 
 =item * CPAN Forum
 
-L<http://cpanforum.com/dist/Test-Apocalypse>
+L<http://cpanforum.com/dist/CPAN-WWW-Top100-Retrieve>
 
 =item * RT: CPAN's Request Tracker
 
-L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=Test-Apocalypse>
+L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=CPAN-WWW-Top100-Retrieve>
 
 =item * CPANTS Kwalitee
 
-L<http://cpants.perl.org/dist/overview/Test-Apocalypse>
+L<http://cpants.perl.org/dist/overview/CPAN-WWW-Top100-Retrieve>
 
 =item * CPAN Testers Results
 
-L<http://cpantesters.org/distro/T/Test-Apocalypse.html>
+L<http://cpantesters.org/distro/C/CPAN-WWW-Top100-Retrieve.html>
 
 =item * CPAN Testers Matrix
 
-L<http://matrix.cpantesters.org/?dist=Test-Apocalypse>
+L<http://matrix.cpantesters.org/?dist=CPAN-WWW-Top100-Retrieve>
 
 =item * Git Source Code Repository
 
@@ -450,21 +301,19 @@ This code is currently hosted on github.com under the account "apocalypse". Plea
 and pull from it, or whatever. If you want to contribute patches, please send me a diff or prod me to pull
 from your repository :)
 
-L<http://github.com/apocalypse/perl-test-apocalypse>
+L<http://github.com/apocalypse/perl-cpan-www-top100-retrieve>
 
 =back
 
 =head2 Bugs
 
-Please report any bugs or feature requests to C<bug-test-apocalypse at rt.cpan.org>, or through
-the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Test-Apocalypse>.  I will be
+Please report any bugs or feature requests to C<bug-cpan-www-top100-retrieve at rt.cpan.org>, or through
+the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=CPAN-WWW-Top100-Retrieve>.  I will be
 notified, and then you'll automatically be notified of progress on your bug as I make changes.
 
 =head1 AUTHOR
 
 Apocalypse E<lt>apocal@cpan.orgE<gt>
-
-Thanks to jawnsy@cpan.org for the prodding and help in getting this package ready to be bundled into debian!
 
 =head1 COPYRIGHT AND LICENSE
 
@@ -476,4 +325,3 @@ it under the same terms as Perl itself.
 The full text of the license can be found in the LICENSE file included with this module.
 
 =cut
-

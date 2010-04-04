@@ -8,6 +8,8 @@ Changes
 LICENSE
 
 lib/CPAN/WWW/Top100/Retrieve.pm
+lib/CPAN/WWW/Top100/Retrieve/Dist.pm
+lib/CPAN/WWW/Top100/Retrieve/Utils.pm
 
 examples/simple.pl
 
