@@ -197,7 +197,11 @@ This module retrieves the data from CPAN Top100 and returns it in a structured f
 
 =head2 Constructor
 
-This module uses Moose, so you can pass either a hash or hashref to the constructor. The attributes are:
+This module uses Moose, so you can pass either a hash or hashref to the constructor. The object will cache all
+data relevant to the Top100 for as long as it's alive. If you want to get fresh data just make a new object and
+use that.
+
+The attributes are:
 
 =head3 debug
 
