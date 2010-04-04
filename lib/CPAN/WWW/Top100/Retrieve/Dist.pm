@@ -108,6 +108,18 @@ The distribution name.
 
 The score of the distribution on the Top100 list.
 
+If the type is: heavy
+
+	The score is the number of downstream dependencies
+
+If the type is: volatile, debian, downstream, meta1/2/3
+
+	The score is the number of dependent modules
+
+If the type is: fail
+
+	The score is the FAIL score
+
 =head1 AUTHOR
 
 Apocalypse E<lt>apocal@cpan.orgE<gt>
