@@ -1,10 +1,7 @@
 # Declare our package
 package CPAN::WWW::Top100::Retrieve::Utils;
-use strict; use warnings;
 
-# Initialize our version
-use vars qw( $VERSION );
-$VERSION = '0.01';
+# ABSTRACT: Provides util functions
 
 # set ourself up for exporting
 use base qw( Exporter );
@@ -58,13 +55,10 @@ sub dbids {
 }
 
 1;
-__END__
+
+=pod
 
 =for stopwords todo Top100 IDs dbid dbids uri
-
-=head1 NAME
-
-CPAN::WWW::Top100::Retrieve::Utils - Various utilities for Top100 retrieval
 
 =head1 SYNOPSIS
 
@@ -111,18 +105,5 @@ Returns the type given a dbid.
 =head3 type2dbid
 
 Returns the dbid given a type.
-
-=head1 AUTHOR
-
-Apocalypse E<lt>apocal@cpan.orgE<gt>
-
-=head1 COPYRIGHT AND LICENSE
-
-Copyright 2010 by Apocalypse
-
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself.
-
-The full text of the license can be found in the LICENSE file included with this module.
 
 =cut

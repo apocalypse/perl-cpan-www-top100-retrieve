@@ -1,14 +1,11 @@
 # Declare our package
 package CPAN::WWW::Top100::Retrieve::Dist;
-use strict; use warnings;
 
-# Initialize our version
-use vars qw( $VERSION );
-$VERSION = '0.01';
+# ABSTRACT: Describes a dist in the Top100
 
 # import the Moose stuff
 use Moose;
-use MooseX::StrictConstructor;
+use MooseX::StrictConstructor 0.08;
 use namespace::autoclean;
 
 has 'type' => (
@@ -53,13 +50,10 @@ no Moose;
 __PACKAGE__->meta->make_immutable;
 
 1;
-__END__
+
+=pod
 
 =for stopwords todo dbid dist
-
-=head1 NAME
-
-CPAN::WWW::Top100::Retrieve::Dist - Represents a distribution listed in the Top100
 
 =head1 SYNOPSIS
 
@@ -119,19 +113,6 @@ If the type is: volatile, debian, downstream, meta1/2/3
 If the type is: fail
 
 	The score is the FAIL score
-
-=head1 AUTHOR
-
-Apocalypse E<lt>apocal@cpan.orgE<gt>
-
-=head1 COPYRIGHT AND LICENSE
-
-Copyright 2010 by Apocalypse
-
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself.
-
-The full text of the license can be found in the LICENSE file included with this module.
 
 =cut
 

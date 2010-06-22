@@ -1,14 +1,11 @@
 # Declare our package
 package CPAN::WWW::Top100::Retrieve;
-use strict; use warnings;
 
-# Initialize our version
-use vars qw( $VERSION );
-$VERSION = '0.01';
+# ABSTRACT: Retrieves the CPAN Top100 data from http://ali.as/top100
 
 # import the Moose stuff
 use Moose;
-use MooseX::StrictConstructor;
+use MooseX::StrictConstructor 0.08;
 use Moose::Util::TypeConstraints;
 use Params::Coerce;
 use namespace::autoclean;
@@ -172,13 +169,10 @@ no Moose;
 __PACKAGE__->meta->make_immutable;
 
 1;
-__END__
+
+=pod
 
 =for stopwords Top100 AnnoCPAN CPANTS Kwalitee RT com diff dists github ua uri
-
-=head1 NAME
-
-CPAN::WWW::Top100::Retrieve - Retrieves the CPAN Top100 data from http://ali.as/top100
 
 =head1 SYNOPSIS
 
@@ -254,78 +248,6 @@ Returns the error string if it was set, undef if not.
 =head1 SEE ALSO
 
 L<CPAN::WWW::Top100::Retrieve::Dist>
-
 L<CPAN::WWW::Top100::Retrieve::Utils>
-
-=head1 SUPPORT
-
-You can find documentation for this module with the perldoc command.
-
-	perldoc CPAN::WWW::Top100::Retrieve
-
-=head2 Websites
-
-=over 4
-
-=item * Search CPAN
-
-L<http://search.cpan.org/dist/CPAN-WWW-Top100-Retrieve>
-
-=item * AnnoCPAN: Annotated CPAN documentation
-
-L<http://annocpan.org/dist/CPAN-WWW-Top100-Retrieve>
-
-=item * CPAN Ratings
-
-L<http://cpanratings.perl.org/d/CPAN-WWW-Top100-Retrieve>
-
-=item * CPAN Forum
-
-L<http://cpanforum.com/dist/CPAN-WWW-Top100-Retrieve>
-
-=item * RT: CPAN's Request Tracker
-
-L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=CPAN-WWW-Top100-Retrieve>
-
-=item * CPANTS Kwalitee
-
-L<http://cpants.perl.org/dist/overview/CPAN-WWW-Top100-Retrieve>
-
-=item * CPAN Testers Results
-
-L<http://cpantesters.org/distro/C/CPAN-WWW-Top100-Retrieve.html>
-
-=item * CPAN Testers Matrix
-
-L<http://matrix.cpantesters.org/?dist=CPAN-WWW-Top100-Retrieve>
-
-=item * Git Source Code Repository
-
-This code is currently hosted on github.com under the account "apocalypse". Please feel free to browse it
-and pull from it, or whatever. If you want to contribute patches, please send me a diff or prod me to pull
-from your repository :)
-
-L<http://github.com/apocalypse/perl-cpan-www-top100-retrieve>
-
-=back
-
-=head2 Bugs
-
-Please report any bugs or feature requests to C<bug-cpan-www-top100-retrieve at rt.cpan.org>, or through
-the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=CPAN-WWW-Top100-Retrieve>.  I will be
-notified, and then you'll automatically be notified of progress on your bug as I make changes.
-
-=head1 AUTHOR
-
-Apocalypse E<lt>apocal@cpan.orgE<gt>
-
-=head1 COPYRIGHT AND LICENSE
-
-Copyright 2010 by Apocalypse
-
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself.
-
-The full text of the license can be found in the LICENSE file included with this module.
 
 =cut
