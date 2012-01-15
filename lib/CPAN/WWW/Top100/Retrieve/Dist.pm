@@ -53,7 +53,7 @@ __PACKAGE__->meta->make_immutable;
 
 =pod
 
-=for stopwords todo dbid dist
+=for stopwords dbid dist
 
 =head1 SYNOPSIS
 
@@ -80,27 +80,37 @@ Those attributes hold information about the distribution.
 
 The type of Top100 this dist is listed on.
 
-example: heavy
+Example: heavy
 
 =head3 dbid
 
 The dbid of Top100 this dist is listed on.
 
+Example: 1
+
 =head3 rank
 
 The rank of this dist on the Top100 list.
+
+Example: 81
 
 =head3 author
 
 The author of this dist.
 
+Example: LBROCARD
+
 =head3 dist
 
 The distribution name.
 
+Example: Tapper-MCP
+
 =head3 score
 
 The score of the distribution on the Top100 list.
+
+Example: 153
 
 If the type is: heavy
 

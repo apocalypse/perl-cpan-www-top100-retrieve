@@ -13,7 +13,7 @@ sub default_top100_uri {
 	return 'http://ali.as/top100/data.html';
 }
 
-# TODO hardcoded from CPAN::WWW::Top100::Generator v0.08
+# hardcoded from CPAN::WWW::Top100::Generator v0.08
 my %dbid_type = (
 	1	=> 'heavy',
 	2	=> 'volatile',
@@ -58,7 +58,7 @@ sub dbids {
 
 =pod
 
-=for stopwords todo Top100 IDs dbid dbids uri
+=for stopwords Top100 IDs dbid dbids uri
 
 =head1 SYNOPSIS
 

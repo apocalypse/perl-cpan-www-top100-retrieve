@@ -203,15 +203,15 @@ The attributes are:
 
 A boolean value specifying debug warnings or not.
 
+The default is: false
+
 =head3 ua
 
 ( not required )
 
 The LWP::UserAgent object to use in place of the default one.
 
-The default is:
-
-	LWP::UserAgent->new;
+The default is: LWP::UserAgent->new;
 
 =head3 uri
 
@@ -219,9 +219,7 @@ The default is:
 
 The uri of Top100 data we should use to retrieve data in place of the default one.
 
-The default is:
-
-	CPAN::WWW::Top100::Retrieve::Utils::default_top100_uri()
+The default is: CPAN::WWW::Top100::Retrieve::Utils::default_top100_uri()
 
 =head2 Methods
 
