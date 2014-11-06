@@ -2,8 +2,12 @@ Revision history for {{$dist->name}}
 
 {{$NEXT}}
 
-	Converted to Dist::Zilla for the release process!
+1.001 2014-11-06T17:54:44Z UTC
+ - Converted to Dist::Zilla for the release process!
 
-0.01	0000-00-00T00:00:00Z UTC
+ [STATISTICS]
+ - code churn: 14 files changed, 466 insertions(+), 603 deletions(-)
 
-	initial release
+0.01 0000-00-00T00:00:00Z UTC
+ - initial release
+
