@@ -1,9 +1,9 @@
-Revision history for Perl extension Test::Apocalypse
+Revision history for {{$dist->name}}
 
 {{$NEXT}}
 
 	Converted to Dist::Zilla for the release process!
 
-* 0.01
+0.01	0000-00-00T00:00:00Z UTC
 
 	initial release
