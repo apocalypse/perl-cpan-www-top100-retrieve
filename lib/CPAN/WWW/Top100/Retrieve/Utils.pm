@@ -4,7 +4,7 @@ package CPAN::WWW::Top100::Retrieve::Utils;
 # ABSTRACT: Provides util functions
 
 # set ourself up for exporting
-use base qw( Exporter );
+use parent qw( Exporter );
 our @EXPORT_OK = qw( default_top100_uri
 	dbid2type type2dbid types dbids
 );

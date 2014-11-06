@@ -53,7 +53,7 @@ __PACKAGE__->meta->make_immutable;
 
 =pod
 
-=for stopwords dbid dist
+=for stopwords dbid dist debian
 
 =head1 SYNOPSIS
 
@@ -125,4 +125,3 @@ If the type is: fail
 	The score is the FAIL score
 
 =cut
-
